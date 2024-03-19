@@ -1,0 +1,360 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Математическая игра</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            font-family: Arial, sans-serif;
+            background: linear-gradient(to bottom, #000033 0%, #000066 100%);
+            height: 100vh;
+            overflow: hidden;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            flex-direction: column;
+            color: white;
+            position: relative;
+        }
+        #container {
+            z-index: 2;
+            background-size: cover;
+            padding: 20px;
+            border-radius: 10px;
+            text-align: center;
+        }
+        #problem {
+            font-size: 36px;
+            margin-bottom: 20px;
+        }
+        #answer {
+            margin-bottom: 10px;
+        }
+        #userAnswer {
+            font-size: 24px;
+            padding: 5px;
+            margin-right: 10px;
+        }
+        button {
+            font-size: 20px;
+            padding: 10px;
+            background-color: #4CAF50;
+            border: none;
+            color: white;
+            border-radius: 5px;
+            cursor: pointer;
+            margin: 5px;
+        }
+        button:hover {
+            background-color: #45a049;
+        }
+        .sky-object {
+            position: absolute;
+            font-size: 65px;
+        }
+        .sun {
+            color: yellow;
+        }
+        .cloud {
+            color: #fff;
+        }
+        .modal {
+            display: none;
+            position: fixed;
+            z-index: 999;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            overflow: auto;
+            background-color: rgba(0, 0, 0, 0.4);
+            align-items: center;
+            justify-content: center;
+        }
+        .modal-content {
+            background-color: #002244;
+            margin: auto;
+            padding: 20px;
+            border: 1px solid #888;
+            width: 30%;
+            border-radius: 10px;
+            text-align: center;
+        }
+        #resultModal .modal-content {
+            background-color: #ffd700;
+        }
+        .close {
+            color: #aaa;
+            float: right;
+            font-size: 28px;
+            font-weight: bold;
+        }
+        .close:hover,
+        .close:focus {
+            color: black;
+            text-decoration: none;
+            cursor: pointer;
+        }
+        #timerModal-content input[type="number"] {
+            width: 80%;
+            padding: 10px;
+            font-size: 20px;
+            margin-top: 5px;
+        }
+    </style>
+</head>
+<body>
+    <div id="container">
+        <div id="problem"></div>
+        <div id="answer">
+            <input type="number" id="userAnswer" min="0" max="10">
+            <button onclick="checkAnswer()">Ответить</button>
+        </div>
+        <div id="stats">
+            <div>Счёт: <span id="score">0</span></div>
+            <div>Ошибки: <span id="errors">0</span></div>
+            <div>Всего примеров: <span id="totalProblems">0</span></div>
+            <div id="timer">Время: 60 секунд</div>
+        </div>
+        <button onclick="openTimerModal()">Настроить время</button>
+        <button onclick="startGame()">Старт</button>
+    </div>
+
+    <div id="timerModal" class="modal">
+        <div class="modal-content" id="timerModal-content">
+            <span class="close" onclick="closeTimerModal()">&times;</span>
+            <h2>Выберите время на таймере (в секундах)</h2>
+            <input type="number" id="timerValue" min="1" max="999" value="60">
+            <button onclick="setTimer()">Установить</button>
+        </div>
+    </div>
+
+    <div id="resultModal" class="modal">
+        <div class="modal-content">
+            <span class="close" onclick="closeResultModal()">&times;</span>
+            <h2>Результаты игры</h2>
+            <div id="finalStats"></div>
+            <button onclick="resetGame()">Заново</button> <!-- Кнопка "Заново" -->
+        </div>
+    </div>
+    
+    <div id="resultModal" class="modal">
+        <div class="modal-content">
+            <span class="close" onclick="closeResultModal()">&times;</span>
+            <h2>Результаты игры</h2>
+            <div id="finalStats"></div>
+        </div>
+    </div>
+
+    <script>
+        var score = 0;
+        var errors = 0;
+        var totalProblems = 0;
+        var prevAnswer = null;
+        var timerValue = 60;
+        var timer;
+
+        function generateProblem() {
+            var operand1 = Math.floor(Math.random() * 11);
+            var operand2 = Math.floor(Math.random() * 11);
+            var operation = Math.random() < 0.5 ? '+' : '-';
+            var result;
+
+            if (operation === '+') {
+                while (operand1 + operand2 > 10) {
+                    operand1 = Math.floor(Math.random() * 11);
+                    operand2 = Math.floor(Math.random() * 11);
+                }
+                result = operand1 + operand2;
+            } else {
+                while (operand1 - operand2 < 0) {
+                    operand1 = Math.floor(Math.random() * 11);
+                    operand2 = Math.floor(Math.random() * 11);
+                }
+                result = operand1 - operand2;
+            }
+
+            var problemText = `${operand1} ${operation} ${operand2} = ?`;
+            document.getElementById('problem').textContent = problemText;
+            prevAnswer = { problem: problemText, answer: result };
+        }
+
+        function checkAnswer() {
+            var userAnswer = parseInt(document.getElementById('userAnswer').value);
+            var correctAnswer = prevAnswer.answer;
+
+            totalProblems++;
+            document.getElementById('totalProblems').textContent = totalProblems;
+
+            if (userAnswer === correctAnswer) {
+                score++;
+                document.getElementById('score').textContent = score;
+                addSkyObject(true);
+            } else {
+                errors++;
+                document.getElementById('errors').textContent = errors;
+                addSkyObject(false);
+            }
+
+            document.getElementById('userAnswer').value = ''; // Очистка поля ввода
+            generateProblem();
+        }
+
+        var placedObjects = []; // Массив для хранения позиций солнца и туч
+
+function addSkyObject(isCorrect) {
+    var object = document.createElement('div');
+    object.classList.add('sky-object');
+    object.innerHTML = isCorrect ? '☀️' : '☁️';
+
+    var position = getRandomPositionExcludingExamples();
+    while (isOverlapping(position)) {
+        position = getRandomPositionExcludingExamples();
+    }
+
+    object.style.left = position.left + 'px';
+    object.style.top = position.top + 'px';
+
+    placedObjects.push({left: position.left, top: position.top, size: 40}); // 40px - размер солнца/тучи
+    document.body.appendChild(object);
+}
+
+function getRandomPositionExcludingExamples() {
+    var minX = 0, minY = 0;
+    var maxX = window.innerWidth - 40; // Учитывая размер солнца/тучи
+    var maxY = window.innerHeight - 40;
+
+    // Исключаем область примеров, предполагая, что она находится в центре
+    var exampleRect = document.getElementById('container').getBoundingClientRect();
+
+    var position = {
+        left: Math.random() * maxX,
+        top: Math.random() * maxY
+    };
+
+    // Проверка, что новая позиция не в области с примерами
+    if (position.left >= exampleRect.left - 40 && position.left <= exampleRect.right &&
+        position.top >= exampleRect.top - 40 && position.top <= exampleRect.bottom) {
+        return getRandomPositionExcludingExamples(); // Рекурсивно ищем новую позицию
+    }
+
+    return position;
+}
+
+function isOverlapping(newObj) {
+    for (var i = 0; i < placedObjects.length; i++) {
+        var obj = placedObjects[i];
+        if (Math.abs(newObj.left - obj.left) < 40 && Math.abs(newObj.top - obj.top) < 40) {
+            return true; // Новый объект перекрывается с существующим
+        }
+    }
+    return false;
+}
+
+        function openTimerModal() {
+            document.getElementById('timerModal').style.display = 'flex';
+        }
+
+        function closeTimerModal() {
+            document.getElementById('timerModal').style.display = 'none';
+        }
+
+        function setTimer() {
+            timerValue = parseInt(document.getElementById('timerValue').value);
+            closeTimerModal();
+        }
+
+        function setTimer() {
+            timerValue = parseInt(document.getElementById('timerValue').value);
+            document.getElementById('timer').textContent = 'Время: ' + timerValue + ' секунд';
+            closeTimerModal();
+        }
+        
+        function startGame() {
+            score = 0;
+            errors = 0;
+            totalProblems = 0;
+            document.getElementById('score').textContent = score;
+            document.getElementById('errors').textContent = errors;
+            document.getElementById('totalProblems').textContent = totalProblems;
+            generateProblem();
+            startTimer(timerValue);
+        }
+
+        function startTimer(duration) {
+            var timeLeft = duration;
+            clearInterval(timer);
+            timer = setInterval(function() {
+                timeLeft--;
+                document.getElementById('timer').textContent = 'Время: ' + timeLeft + ' секунд';
+                if (timeLeft <= 0) {
+                    clearInterval(timer);
+                    showResult();
+                }
+            }, 1000);
+        }
+
+        function showResult() {
+            var resultModal = document.getElementById('resultModal');
+            resultModal.style.display = 'flex';
+            var finalStats = document.getElementById('finalStats');
+            finalStats.innerHTML = `Всего примеров: ${totalProblems}<br>Правильных ответов: ${score}<br>Ошибок: ${errors}`;
+        }
+
+        function closeResultModal() {
+            document.getElementById('resultModal').style.display = 'none';
+        }
+    </script>
+    <script>
+        // Предыдущие определения переменных и функций остаются без изменений
+    
+        document.addEventListener("DOMContentLoaded", function() {
+            document.getElementById('userAnswer').addEventListener('keypress', function(e) {
+                if (e.key === 'Enter') {
+                    checkAnswer();
+                }
+            });
+        });
+    
+        function checkAnswer() {
+            var userAnswer = parseInt(document.getElementById('userAnswer').value);
+            var correctAnswer = prevAnswer.answer;
+    
+            totalProblems++;
+            document.getElementById('totalProblems').textContent = totalProblems;
+    
+            if (userAnswer === correctAnswer) {
+                score++;
+                document.getElementById('score').textContent = score;
+                addSkyObject(true);
+            } else {
+                errors++;
+                document.getElementById('errors').textContent = errors;
+                addSkyObject(false);
+            }
+    
+            document.getElementById('userAnswer').value = ''; // Очищаем поле ввода
+            document.getElementById('userAnswer').focus(); // Удерживаем фокус на поле ввода
+            generateProblem();
+        }
+        function resetGame() {
+            clearSkyObjects();
+            document.getElementById('score').textContent = '0';
+            document.getElementById('errors').textContent = '0';
+            document.getElementById('totalProblems').textContent = '0';
+            score = errors = totalProblems = 0;
+            document.getElementById('resultModal').style.display = 'none';
+            document.getElementById('startButton').disabled = false; // Активация кнопки "Старт" для новой игры
+        }
+
+        function clearSkyObjects() {
+            var skyObjects = document.querySelectorAll('.sky-object');
+            skyObjects.forEach(obj => obj.remove());
+        }
+        // Остальные функции остаются без изменений
+    </script>  
+</body>
+</html>
